@@ -59,12 +59,18 @@ struct BankCase
             Snapshot snapshot(cluster);
             std::string prefix = "bankkey_";
             auto scanner = snapshot.Scan(prefix, prefixNext(prefix));
+            int cnt = 0;
             while (scanner.valid)
             {
+                auto key = scanner.key();
+                auto key_indx = get_bank_key_index(key);
+	        std::cerr << "key "<<key_indx<<" "<<cnt<<std::endl;
                 auto value = scanner.value();
                 total += std::stoi(value);
                 scanner.next();
+                cnt ++;
             }
+            std::cerr<< "total: "<< total<<" account "<<account_cnt<<" cnt "<<cnt<<std::endl;
             assert(total == account_cnt * 1000);
             std::this_thread::sleep_for(std::chrono::seconds(2));
         }
@@ -124,21 +130,30 @@ struct BankCase
         }
     }
 
+    int get_bank_key_index(std::string key) 
+    {
+        return std::stoi(key.substr(key.find("_") + 1));
+    }
     std::string bank_key(int idx) { return "bankkey_" + std::to_string(idx); }
     std::string bank_value(int money) { return std::to_string(money); }
 
     void initAccount()
     {
+        int set_cnt = 0;
         for (;;)
         {
             if (stop)
                 return;
             int start_idx = start.fetch_sub(1) - 1;
             if (start_idx < 0)
+	    {
+		std::cerr << "set: "<<set_cnt<<std::endl;
                 return;
+	    }
             Txn txn(cluster);
             for (int i = start_idx * batch_size; i < start_idx * batch_size + batch_size; i++)
             {
+    		set_cnt ++;
                 txn.set(bank_key(i), bank_value(1000));
             }
             txn.commit();

@@ -12,6 +12,8 @@
 #include <Poco/Net/HTTPRequest.h>
 #include <Poco/Net/HTTPResponse.h>
 
+#include <unistd.h>
+
 namespace {
 
 using namespace Poco::Net;
@@ -28,22 +30,35 @@ public:
         getConfig();
     }
 
+    std::string debug_string( std::string str)
+    {
+        for (size_t i = 0; i < str.size() ;i++) {
+            if (str[i] == '\n') str[i] = ' ';
+        }
+        return str;
+    }
+
     void getConfig () {
+        std::string manager_addr_str(manager_addr);
+        int begin = manager_addr_str.find("://")+3;
+        std::string rest_info = manager_addr_str.substr(begin);
+        std::string host = rest_info.substr(0, rest_info.find(":"));
+        int port = std::stoi(rest_info.substr(rest_info.find(":")+1));
         std::string url = manager_addr + std::string("/testConfig/") + std::to_string(self_id);
-        SocketAddress addr(manager_addr);
+        SocketAddress addr(host, port);
         HTTPClientSession sess(addr);
         HTTPRequest req(HTTPRequest::HTTP_GET, url);
         sess.sendRequest(req);
         HTTPResponse res;
         auto & is = sess.receiveResponse(res);
-        char buffer[1024];
+        char buffer[1200];
         std::string json_str;
         for (;;)
         {
-            is.read(buffer, 1024);
+            is.read(buffer, 256);
             if (is)
             {
-                json_str.append(buffer, 1024);
+                json_str.append(buffer, 256);
             }
             else
             {
@@ -52,21 +67,23 @@ public:
             }
         }
         config = json_str;
-        std::cerr << "json string is : " << config <<std::endl;
     }
 
     std::vector<std::string> PDs() {
         Poco::JSON::Parser parser;
         Poco::Dynamic::Var result = parser.parse(config);
         auto json_obj = result.extract<Poco::JSON::Object::Ptr>();
-        auto cat = json_obj->getObject("cat");
-        auto pds = cat->getArray("PDs");
+        auto data = json_obj->getObject("data");
+        auto cat = data->getObject("cat");
+        auto pds = cat->getArray("pds");
         std::vector<std::string> rets;
         for (size_t i = 0; i < pds->size(); i ++)
         {
             auto ip = pds->getObject(i)->getValue<std::string>("ip");
             auto port = pds->getObject(i)->getValue<int>("service_port");
-            rets.push_back(ip + std::to_string(port));
+            std::string addr = ip + ":" + std::to_string(port);
+            std::cerr <<"pd addr: "<<addr<<std::endl;
+            rets.push_back(addr);
         }
         return rets;
     }
