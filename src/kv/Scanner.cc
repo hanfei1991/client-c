@@ -61,6 +61,7 @@ void Scanner::getData(Backoffer & bo)
         if (req_end_key.size() > 0 && loc.end_key.size() > 0 && loc.end_key < req_end_key)
             req_end_key = loc.end_key;
 
+
         auto regionClient = RegionClient(snap.cluster, loc.region);
         auto request = new kvrpcpb::ScanRequest();
         request->set_start_key(next_start_key);
@@ -117,7 +118,7 @@ void Scanner::getData(Backoffer & bo)
         }
 
         auto lastKey = responce->pairs(responce->pairs_size() - 1);
-        next_start_key = prefixNext(lastKey.key());
+        next_start_key = alphabeticalNext(lastKey.key());
         return;
     }
 }

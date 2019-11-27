@@ -64,7 +64,6 @@ struct BankCase
             {
                 auto key = scanner.key();
                 auto key_indx = get_bank_key_index(key);
-	        std::cerr << "key "<<key_indx<<" "<<cnt<<std::endl;
                 auto value = scanner.value();
                 total += std::stoi(value);
                 scanner.next();

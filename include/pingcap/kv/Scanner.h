@@ -24,6 +24,12 @@ inline std::string prefixNext(const std::string & str)
     return "";
 }
 
+inline std::string alphabeticalNext(std::string str)
+{
+    str.push_back('\0');
+    return str;
+}
+
 struct Scanner
 {
     Snapshot snap;
